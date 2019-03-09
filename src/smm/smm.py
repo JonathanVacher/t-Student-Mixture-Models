@@ -1,13 +1,20 @@
-"""t-Student Mixture Models Module (smm).
+"""t-Student Mixture Models.
 
-- This module allows you to model data by a mixture of t-Student \
-distributions, estimating the parameters with \
-Expectation-Maximisation. \
-It is an implementation of the paper: 'Robust mixture modelling using \
-the t distribution', D. Peel and G. J. McLachlan. Published at: \
-Statistics and Computing (2000) 10, 339-348.   
+This class has reused code and comments from sklearn.mixture.gmm.
 
-- This module has reused code and comments from sklearn.mixture.gmm.  
+This class is the implements the following paper:
+=================================================
+ 
+'Robust mixture modelling using the t distribution', D. Peel and G. J. 
+McLachlan.
+Published at: Statistics and Computing (2000) 10, 339-348.
+ 
+This code has been done as part of my PhD at University College London 
+under the supervision of Prof. Sebastien Ourselin and Dr. Tom 
+Vercauteren.
+
+Luis Carlos Garcia-Peraza Herrera (luis.herrera.14@ucl.ac.uk).
+24 Nov 2015.
 """
 
 import numpy as np
@@ -26,7 +33,7 @@ class dofMaximizationError(ValueError):
 
 
 class SMM(sklearn.base.BaseEstimator):
-    """t-Student Mixture Model SMM class.
+    """t-Student Mixture Model.
 
     Representation of a t-Student mixture model probability 
     distribution. This class allows for easy evaluation of, sampling
@@ -68,7 +75,7 @@ class SMM(sklearn.base.BaseEstimator):
 
     n_init : int, optional.
              Number of initializations to perform. The best result 
-  			  is kept.
+             is kept.
              Defaults to 1.
 
     params : string, optional.
@@ -123,7 +130,7 @@ class SMM(sklearn.base.BaseEstimator):
         self.n_init = n_init
         self.params = params
         self.init_params = init_params
-        #self.converged_ = False
+        self.converged_ = False
 
     def _expectation_step(self, X):
         """Performs the expectation step of the EM algorithm.
@@ -162,23 +169,22 @@ class SMM(sklearn.base.BaseEstimator):
             )
 
         # Initialisation of reponsibilities and weight of each point for
-		  # the Gamma distribution
+          # the Gamma distribution
         n_samples, n_dim = X.shape
         responsibilities = np.ndarray(
             shape=(X.shape[0], self.n_components), 
-	    dtype=np.float64
-	)
+        dtype=np.float64)
+        
         gammaweights_ = np.ndarray(
             shape=(X.shape[0], self.n_components), 
-            dtype=np.float64
-	)
+            dtype=np.float64)
 
         # Calculate the probability of each point belonging to each 
-		  # t-Student distribution of the mixture
+          # t-Student distribution of the mixture
         pr_before_weighting = self._multivariate_t_student_density(
             X, self.means_, self.covars_, self.degrees_, 
-            self.covariance_type, self.min_covar
-	)
+            self.covariance_type, self.min_covar)
+        
         pr = pr_before_weighting * self.weights_
 
         # Calculate the likelihood of each point
@@ -186,10 +192,8 @@ class SMM(sklearn.base.BaseEstimator):
 
         # Update responsibilities
         responsibilities = \
-	    pr / (likelihoods.reshape(likelihoods.shape[0], 1) 
-            + 10 * SMM._EPS
-        )
-
+        pr / (likelihoods.reshape(likelihoods.shape[0], 1))#\
+#             + 10 * SMM._EPS)
         # Update the Gamma weight for each observation
         mahalanobis_distance_mix_func = SMM._mahalanobis_funcs[
             self.covariance_type
@@ -322,6 +326,8 @@ class SMM(sklearn.base.BaseEstimator):
 
             if 'd' in self.init_params or not hasattr(self, 'degrees_'):
                 self.degrees_ = np.tile(1.0, self.n_components)
+                #0.5+3*np.random.rand(self.n_components)
+                #
 
             best_params = {
                 'weights': self.weights_,
@@ -368,7 +374,7 @@ class SMM(sklearn.base.BaseEstimator):
                 # Maximisation step
                 try:
                     self._maximisation_step(X, responsibilities, 
-						      gammaweights_
+                                              gammaweights_
                     )
                 except dofMaximizationError as e:
                     print(
@@ -399,7 +405,7 @@ class SMM(sklearn.base.BaseEstimator):
             warnings.warn(msg, RuntimeWarning)
 
         # Choosing the best result of all the iterations as the actual 
-		  # result
+          # result
         if self.n_iter:
             self.weights_ = best_params['weights']
             self.means_ = best_params['means']
@@ -500,7 +506,7 @@ class SMM(sklearn.base.BaseEstimator):
             )
 
         # Initialisation of reponsibilities and weight of each point for
-		  # the Gamma distribution
+          # the Gamma distribution
         n_samples, n_dim = X.shape
         responsibilities = np.ndarray(
             shape=(X.shape[0], self.n_components), dtype=np.float64
@@ -510,7 +516,7 @@ class SMM(sklearn.base.BaseEstimator):
         )
 
         # Calculate the probability of each point belonging to each 
-		  # t-Student distribution of the mixture
+          # t-Student distribution of the mixture
         pr = self._multivariate_t_student_density(
             X, self.means_, self.covars_, self.degrees_,
             self.covariance_type, self.min_covar
@@ -567,7 +573,7 @@ class SMM(sklearn.base.BaseEstimator):
         """
 
         retval = - 2 * self.score(X).sum() \
-		      + self._n_parameters() * np.log(X.shape[0])
+              + self._n_parameters() * np.log(X.shape[0])
 
         return retval
 
@@ -651,6 +657,7 @@ class SMM(sklearn.base.BaseEstimator):
 
         # Calculate the constant part of the equation to calculate the 
         # new degrees of freedom
+        #print(z_sum)
         vdim = (v_vector + n_dim) / 2.0
         zlogu_sum = np.sum(z * (np.log(u) - u), axis=0)
         constant_part = 1.0               \
@@ -660,6 +667,7 @@ class SMM(sklearn.base.BaseEstimator):
 
         # Solve the equation numerically using Newton-Raphson for each 
         # component of the mixture
+        
         for c in range(n_components):
             def func(x): return np.log(x / 2.0)  \
                 - scipy.special.digamma(x / 2.0) \
@@ -670,10 +678,11 @@ class SMM(sklearn.base.BaseEstimator):
 
             def fprime2(x): return - 1.0 / (x * x) \
                 - scipy.special.polygamma(2, x / 2.0) / 4.0
+            
             new_v_vector[c] = scipy.optimize.newton(
                 func, v_vector[c], fprime, args=(), tol=tol, 
-                maxiter=n_iter, fprime2=fprime2
-            )
+                maxiter=n_iter, fprime2=fprime2)
+            
             if new_v_vector[c] < 0.0:
                 raise ValueError('[_solve_dof_equation] Error, ' \
                     + 'degree of freedom smaller than one. \n'   \
@@ -737,13 +746,10 @@ class SMM(sklearn.base.BaseEstimator):
         # responsibilities matrix is multiplied element-wise by the 
         # gamma weights matrix. See that zu.T is used in the calculation
         # of weighted_X_sum)
-        norm = np.float64(1) / (z_sum[:, np.newaxis] + 10 * SMM._EPS)
-        weighted_X_sum = np.dot(zu.T, X)
-        avg_X2 = np.dot(zu.T, X * X) * norm
-        avgmeans_2 = means ** 2
-        avg_Xmeans_ = means * weighted_X_sum * norm
-        retval = avg_X2 - 2 * avg_Xmeans_ + avgmeans_2 + min_covar
-
+        norm = 1.0 / (z_sum[:, np.newaxis]) #+ 10 * SMM._EPS)
+        diff2 = (X.T[np.newaxis,...] - means[...,np.newaxis])**2
+        retval = np.sum(zu[:, np.newaxis,:].T*diff2, axis=2)*norm
+        
         return retval 
 
     @staticmethod
@@ -793,7 +799,7 @@ class SMM(sklearn.base.BaseEstimator):
         assert(z_sum.shape[0] == n_components)
 
         # Eq. 31 from D. Peel and G. J. McLachlan, "Robust mixture 
-		  # modelling using the t distribution"
+        # modelling using the t distribution"
         cv = np.empty((n_components, n_features, n_features))
         zu_sum = zu.sum(axis=0)
         for c in range(n_components):
@@ -853,7 +859,7 @@ class SMM(sklearn.base.BaseEstimator):
 
     @staticmethod
     def _multivariate_t_student_density_diag(X, means, covars, dfs,
-	         min_covar):
+             min_covar):
         """Multivariate t-Student PDF for a matrix of data points and
         diagonal covariance matrices.
 
@@ -891,24 +897,25 @@ class SMM(sklearn.base.BaseEstimator):
         assert(covars.shape[1] == n_dim)
 
         # Calculate inverse and determinant of the covariances
-        inv_covars = 1.0 / covars
-        det_covars = np.prod(covars, axis=1)
+#         inv_covars = 1.0 / covars
+        log_det_covars = np.sum(np.log(covars), axis=1)
 
         # Calculate the value of the numerator
-        num = scipy.special.gamma((dfs + n_dim) / 2.0)
+        log_num = scipy.special.gammaln((dfs + n_dim) / 2.0)
 
         # Calculate Mahalanobis distance from all the points to the 
-		  # mean of each component in the mix
+          # mean of each component in the mix
         maha = SMM._mahalanobis_distance_mix_diag(X, means, covars, 
             min_covar)
 
         # Calculate the value of the denominator
         braces = 1.0 + maha / dfs
-        denom = np.power(np.pi * dfs, n_dim / 2.0) \
-            * scipy.special.gamma(dfs / 2.0)       \
-            * np.sqrt(det_covars)                  \
-            * np.power(braces, (dfs + n_dim) / 2.0)
-        retval = num / denom
+        log_denom = np.log(np.pi * dfs)*n_dim / 2.0\
+            + scipy.special.gammaln(dfs / 2.0)       \
+            + 0.5*log_det_covars                  \
+            + np.log(braces)*(dfs + n_dim) / 2.0
+        
+        retval = np.exp(log_num - log_denom)
 
         return retval 
 
@@ -1058,29 +1065,35 @@ class SMM(sklearn.base.BaseEstimator):
             cov_det = np.power(np.prod(np.diagonal(cov_chol)), 2)
 
             # Calculate the Mahalanobis distance between each vector and
-				# the mean
+            # the mean
             maha = SMM._mahalanobis_distance_chol(X, mu, cov_chol)
 
             # Calculate the coefficient of the gamma functions
             r = np.asarray(df, dtype=np.float64)
-            
             log_gamma_coef = scipy.special.gammaln((r + n_dim) / 2.0) \
                 - scipy.special.gammaln(r / 2.0)
+            
 
             # Calculate the denominator of the multivariate t-Student
-            logdenom = np.log(np.sqrt(cov_det))
-            logdenom += n_dim / 2.0 * np.log(np.pi * df)
-            logdenom += (df + n_dim) / 2 * np.log(1 + maha / df)
-
+            log_denom = np.log(np.sqrt(cov_det))
+            log_denom += n_dim/2.0*np.log(np.pi * df)
+            log_denom += (df + n_dim)/2*np.log(1 + maha / df)
+            
             # Finally calculate the PDF of the class 'c' for all the X 
             # samples
-            prob[:, c] = np.exp(log_gamma_coef - logdenom)
-
+            log_diff = log_gamma_coef - log_denom
+            
+            # clip to max and min before taking exp
+            log_diff[log_diff>709.0] = 705.0
+            log_diff[log_diff<-709.0] = -709.0
+            
+            prob[:, c] = np.exp(log_diff)
+            
         return prob
 
     @staticmethod
     def _multivariate_t_student_density(X, means, covars, dfs, cov_type,
-	         min_covar):
+             min_covar):
         """Calculates the PDF of the multivariate t-student for a group 
         of samples.
 
@@ -1171,9 +1184,15 @@ class SMM(sklearn.base.BaseEstimator):
         except scipy.linalg.LinAlgError:
             # The model is most probably stuck in a component with too
             # few observations, we need to reinitialize this components
-            cov_chol = scipy.linalg.cholesky(
-                cv + min_covar * np.eye(n_dim), lower=True
-            )
+            try:
+                cov_chol = scipy.linalg.cholesky(
+                    cv + min_covar * np.eye(n_dim), lower=True
+                )
+            except scipy.linalg.LinAlgError:
+                cov_chol = np.eye(n_dim)
+#                 scipy.linalg.cholesky(
+#                     cv + np.eye(n_dim), lower=True
+#                 )
 
         return cov_chol
 
@@ -1372,7 +1391,7 @@ class SMM(sklearn.base.BaseEstimator):
 
     @staticmethod
     def dist_covar_to_match_cov_type(tied_cv, covariance_type, 
-	         n_components):
+             n_components):
         """Create all the covariance matrices from a given template.
         
         Parameters
@@ -1521,3 +1540,4 @@ class SMM(sklearn.base.BaseEstimator):
     }
 
     _EPS = np.finfo(np.float64).eps
+
